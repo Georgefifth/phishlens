@@ -61,6 +61,23 @@
     openai: ["openai.com", "chatgpt.com"],
     github: ["github.com"],
     etsy: ["etsy.com"],
+    telstra: ["telstra.com", "telstra.com.au"],
+    shopee: ["shopee.com", "shopee.sg", "shopee.com.my", "shopee.co.id", "shopee.vn"],
+    kucoin: ["kucoin.com"],
+    comcast: ["comcast.com", "xfinity.com"],
+    att: ["att.com"],
+    verizon: ["verizon.com"],
+    spectrum: ["spectrum.net", "spectrum.com"],
+    coinsquare: ["coinsquare.com"],
+    bitget: ["bitget.com"],
+    okx: ["okx.com"],
+    bybit: ["bybit.com"],
+    exodus: ["exodus.com", "exodus.io"],
+    walmart: ["walmart.com"],
+    costco: ["costco.com"],
+    target: ["target.com"],
+    homedepot: ["homedepot.com"],
+    lowes: ["lowes.com"],
   };
 
   // Does a normalized host label (hyphens stripped) contain the brand?
@@ -73,7 +90,10 @@
       // brand at end only when the lead is credential bait: loginwise ✓, otherwise ✗
       return norm.endsWith(b) && PATH_KEYWORDS.includes(norm.slice(0, -b.length));
     }
-    return norm.length >= b.length + 2 && norm.includes(b);
+    if (norm.length >= b.length + 2 && norm.includes(b)) return true;
+    // leetspeak folded inside a label: m1cr0soft-login, paypa1x
+    const dn = deobfuscate(norm);
+    return dn !== norm && dn.length >= b.length + 2 && dn.includes(b);
   }
 
   // Free/disposable and frequently-abused TLDs (Freenom + low-cost stats).
@@ -81,13 +101,15 @@
     "tk", "ml", "ga", "cf", "gq", "top", "buzz", "cam", "rest", "quest",
     "monster", "icu", "click", "country", "stream", "download", "loan",
     "racing", "win", "bid", "date", "review", "party", "gdn", "men",
-    "work", "zip", "mov",
+    "work", "zip", "mov", "cfd", "info", "help", "live", "site", "online",
+    "store", "shop", "app",
   ]);
 
   const SHORTENERS = new Set([
     "bit.ly", "tinyurl.com", "t.co", "goo.gl", "ow.ly", "is.gd", "buff.ly",
     "rebrand.ly", "cutt.ly", "shorturl.at", "tiny.cc", "rb.gy", "t.ly",
     "s.id", "bit.do", "soo.gd", "clck.ru", "v.gd",
+    "goo.su", "qrco.de", "s4w.in", "g5.lu", "hotm.io", "ln.run", "short.io",
   ]);
 
   // Credential-theft vocabulary in URL paths.
@@ -171,6 +193,11 @@
 
   const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 
+  // Bait words that are suspicious inside a hostname (not just the path).
+  const DOMAIN_BAIT = ["login", "signin", "signon", "verify", "account",
+    "secure", "support", "billing", "confirm", "auth", "wallet", "webscr",
+    "password", "credential", "update", "recovery", "unlock", "suspend"];
+
   // Free hosting / PaaS domains heavily abused by phishing kits.
   const FREE_HOSTS = ["github.io", "blogspot.com", "weebly.com", "amplifyapp.com",
     "workers.dev", "pages.dev", "web.app", "firebaseapp.com", "netlify.app",
@@ -178,7 +205,11 @@
     "replit.app", "repl.co", "surge.sh", "fly.dev", "onrender.com", "trycloudflare.com",
     "ngrok.io", "ngrok-free.app", "000webhostapp.com", "sites.google.com",
     "godaddysites.com", "tripod.com", "angelfire.com", "blogspot.ae", "blogspot.in",
-    "blogspot.co.uk", "blogspot.de", "blogspot.fr", "blogspot.com.br"];
+    "blogspot.co.uk", "blogspot.de", "blogspot.fr", "blogspot.com.br",
+    "webflow.io", "framer.website", "gitbook.io", "wix.com", "site123.me",
+    "carrd.co", "zyrosite.com", "ucraft.site", "mystrikingly.com", "jimdosite.com",
+    "yolasite.com", "weeblysite.com", "bravesites.com", "webnode.page",
+    "canva.site", "notion.site", "linktr.ee", "beacons.ai", "bio.site"];
 
   // Best-effort registrable domain (SLD + public suffix, no PSL dependency).
   function registrable(host) {
@@ -304,7 +335,10 @@
       signals.push(signal("length", 8, "low", `Very long URL (${input.length} chars)`,
         "Overlong URLs are often used to push the real domain out of view."));
     }
-    if ((host.match(/\d/g) || []).length >= 4 && !IP_HOST.test(host)) {
+    if (/^\d+$/.test(sld) && sld.length >= 6) {
+      signals.push(signal("numeric-domain", 25, "med", `All-numeric domain "${sld}"`,
+        "Random number domains are throwaway phishing infrastructure."));
+    } else if ((host.match(/\d/g) || []).length >= 4 && !IP_HOST.test(host)) {
       signals.push(signal("digits", 8, "low", "Many digits in hostname",
         "Random-looking digit strings are common in disposable phishing domains."));
     }
@@ -314,6 +348,7 @@
       const deob = deobfuscate(sld);
       for (const [brand] of Object.entries(BRANDS)) {
         if (deob === brand + "s") continue; // dictionary plural (apples.com)
+        if (deob.length < brand.length && brand.includes(deob)) continue; // fragment, not squat (bit.ly⊂bybit)
         const dist = levenshtein(deob, brand);
         // short brands: dist 2 is too noisy ('etsy'→'ebay' is a legit site)
         if (deob !== brand && dist > 0 && dist <= (brand.length <= 4 ? 1 : 2)) {
@@ -338,6 +373,18 @@
             "Attackers prepend brand names as subdomains to look legitimate."));
           break;
         }
+      }
+    }
+
+    // Credential-bait words inside the domain itself (app-supportecloud.info, login.foo.com)
+    // exempt gov/edu/mil — 'login.gov' is institutional naming, not bait
+    const INSTITUTIONAL = ["gov", "edu", "mil", "govt", "ac"];
+    if (!isBrandDomain(host) && !INSTITUTIONAL.includes(tld)) {
+      const hostBait = brandLabels.filter((l) => DOMAIN_BAIT.some((k) => l.includes(k)));
+      if (hostBait.length) {
+        signals.push(signal("domain-bait", Math.min(24, 8 + hostBait.length * 8), "med",
+          `Credential-bait words in domain (${hostBait.slice(0, 3).join(", ")})`,
+          "Words like 'login/verify/support' baked into the hostname are phishing scaffolding."));
       }
     }
 

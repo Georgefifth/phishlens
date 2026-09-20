@@ -102,14 +102,14 @@ no third-party APIs, no external datasets.
 ## Validation against real phishing URLs
 
 Tested against the [OpenPhish](https://openphish.com) live feed (300 verified
-phishing URLs) plus a 21-domain legitimate control set (including free-host
+phishing URLs) plus a 32-domain legitimate control set (including free-host
 domains, dictionary plurals, and short-brand lookalikes):
 
 | | count |
 |---|---|
-| flagged suspicious/dangerous (score ≥ 40) | **65 / 300 = 21.7%** |
-| flagged dangerous (score ≥ 70) | 15 |
-| false positives on legit control | **0 / 21** |
+| flagged suspicious/dangerous (score ≥ 40) | **79 / 300 = 26.3%** |
+| flagged dangerous (score ≥ 70) | 33 |
+| false positives on legit control | **0 / 32** |
 
 Honest takeaway: URL-only heuristics have a ceiling — most real phishing hides
 on legitimate hosting (github.io, blogspot, amplifyapp) behind clean-looking
