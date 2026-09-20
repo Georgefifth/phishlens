@@ -13,7 +13,7 @@
 
   // Brands commonly impersonated in phishing, mapped to their real domains.
   const BRANDS = {
-    paypal: ["paypal.com"],
+    paypal: ["paypal.com", "paypal-objects.com"],
     amazon: ["amazon.com"],
     apple: ["apple.com", "icloud.com"],
     google: ["google.com", "accounts.google.com"],
@@ -125,6 +125,25 @@
     posteitaliane: ["poste.it"],
     intesasanpaolo: ["intesasanpaolo.com"],
     unicredit: ["unicredit.it"],
+    lloyds: ["lloydsbank.com", "lloyds.com"],
+    barclays: ["barclays.co.uk", "barclays.com"],
+    hsbc: ["hsbc.com", "hsbc.co.uk"],
+    tsb: ["tsb.co.uk"],
+    halifax: ["halifax.co.uk"],
+    nationwide: ["nationwide.co.uk"],
+    monzo: ["monzo.com"],
+    starling: ["starlingbank.com"],
+    xfinity: ["xfinity.com", "comcast.com"],
+    mediamarkt: ["mediamarkt.com", "mediamarkt.de"],
+    inpost: ["inpost.pl"],
+    vinted: ["vinted.com", "vinted.fr"],
+    leboncoin: ["leboncoin.fr"],
+    booking: ["booking.com"],
+    airbnb: ["airbnb.com"],
+    uber: ["uber.com"],
+    doordash: ["doordash.com"],
+    revolut: ["revolut.com"],
+    n26: ["n26.com"],
   };
 
   // Does a normalized host label (hyphens stripped) contain the brand?
@@ -170,7 +189,8 @@
     "login", "signin", "sign-in", "verify", "verification", "secure",
     "account", "update", "billing", "confirm", "suspend", "unlock",
     "wallet", "recover", "password", "credential", "authenticate",
-    "webscr", "oauth", "validate", "reauth",
+    "webscr", "oauth", "validate", "reauth", "websc",
+    "wp-admin", "wp-content", "wp-includes", "components/com_", "myaccount",
   ];
 
   // Scare/urgency phrases scanned in visible page text.
@@ -252,7 +272,9 @@
     "password", "credential", "update", "recovery", "unlock", "suspend",
     "secur", "client", "compte", "banque", "colis", "livraison", "suivi",
     "facture", "impot", "remboursement", "expir", "oferta",
-    "oferte", "verific", "atendimento", "acesso", "empresa"];
+    "oferte", "verific", "atendimento", "acesso", "empresa",
+    "payee", "transfer", "cancel", "sms", "gift", "limitedtime", "myaccount",
+    "signatur", "dokumen", "invoice", "refund", "payout"];
 
   // Free hosting / PaaS domains heavily abused by phishing kits.
   const FREE_HOSTS = ["github.io", "blogspot.com", "weebly.com", "amplifyapp.com",
@@ -265,7 +287,11 @@
     "webflow.io", "framer.website", "gitbook.io", "wix.com", "site123.me",
     "carrd.co", "zyrosite.com", "ucraft.site", "mystrikingly.com", "jimdosite.com",
     "yolasite.com", "weeblysite.com", "bravesites.com", "webnode.page",
-    "canva.site", "notion.site", "linktr.ee", "beacons.ai", "bio.site"];
+    "canva.site", "notion.site", "linktr.ee", "beacons.ai", "bio.site",
+    "googleapis.com", "appspot.com", "cloudfront.net", "amazonaws.com",
+    "azurewebsites.net", "windows.net", "r2.dev", "fleek.co",
+    "cloudflare-ipfs.com", "ipfs.io", "dweb.link", "w3s.link", "arweave.net",
+    "plesk.page", "4everland.io", "spheron.app", "surge.sh", "edgecompute.app"];
 
   // Best-effort registrable domain (SLD + public suffix, no PSL dependency).
   function registrable(host) {
@@ -500,6 +526,39 @@
     if (rnd) {
       signals.push(signal("rand-sub", 15, "med", `Random-looking subdomain "${rnd.slice(0, 18)}…"`,
         "Auto-generated hostnames are typical of disposable phishing infrastructure."));
+    }
+
+    // Vowel-less label — generated gibberish (jfvlqz.top, wvltnsd.x)
+    const noVowel = (freeHost ? subs : [sld, ...subs]).find(
+      (l) => l.length >= 5 && /^[b-df-hj-np-tv-z0-9-]+$/.test(l) && !IP_HOST.test(l));
+    if (noVowel) {
+      signals.push(signal("vowelless", 15, "med", `Consonant-only label "${noVowel.slice(0, 16)}"`,
+        "Real words have vowels — vowel-less labels are machine-generated."));
+    }
+
+    // Digit-stuffed label (hub4571132.pro, qwo231sdx.club)
+    const digLabel = subs.find((l) => (l.match(/\d/g) || []).length >= 3 && l.length >= 7);
+    if (digLabel) {
+      signals.push(signal("diglabel", 15, "med", `Digit-stuffed label "${digLabel.slice(0, 16)}"`,
+        "Numbers smuggled into hostnames are disposable-infra markers."));
+    }
+
+    // Fake TLD labels parked as subdomains (rauketnen.co.jp.evil.top)
+    const FAKE_TLD = new Set(["co", "com", "net", "org", "or", "edu", "gov",
+      "jp", "uk", "kr", "cn", "de", "fr", "au", "us", "br", "in"]);
+    if (!freeHost) {
+      const fake = subs.filter((l) => FAKE_TLD.has(l));
+      if (fake.length >= 2 || (fake.length && subs.length >= 2)) {
+        signals.push(signal("fake-tld", 18, "med",
+          `Fake suffix "${fake.join(".")}" parked in subdomains`,
+          "Abusing 'co.jp'-style labels makes a random domain look like a regional site."));
+      }
+    }
+
+    // IP address hidden in subdomain labels (91-218-65-223.host.tld)
+    if (subs.some((l) => /^(\d{1,3}[-.]){3}\d{1,3}$/.test(l))) {
+      signals.push(signal("ip-in-sub", 25, "med", "IP address hidden inside hostname",
+        "Encoding the server IP in the domain is a botnet/phishing-kit tell."));
     }
 
     // Credential bait on a free host
