@@ -17,7 +17,9 @@
     amazon: ["amazon.com"],
     apple: ["apple.com", "icloud.com"],
     google: ["google.com", "accounts.google.com"],
-    microsoft: ["microsoft.com", "live.com", "outlook.com", "office.com"],
+    microsoft: ["microsoft.com", "live.com", "outlook.com", "office.com",
+      "office365.com", "office.net", "sharepoint.com", "microsoftonline.com",
+      "live.net", "msft.net", "bing.com", "xbox.com"],
     netflix: ["netflix.com"],
     facebook: ["facebook.com", "fb.com", "meta.com"],
     instagram: ["instagram.com"],
@@ -49,7 +51,7 @@
     kraken: ["kraken.com"],
     blockchain: ["blockchain.com"],
     revolut: ["revolut.com"],
-    wise: ["wise.com"],
+    wise: ["wise.com", "transferwise.com"],
     citibank: ["citibank.com", "citi.com"],
     capitalone: ["capitalone.com"],
     americanexpress: ["americanexpress.com", "aexp.com"],
@@ -144,6 +146,17 @@
     doordash: ["doordash.com"],
     revolut: ["revolut.com"],
     n26: ["n26.com"],
+    caixa: ["caixa.es", "caixabank.com", "lacaixa.es"],
+    bbva: ["bbva.com", "bbva.es"],
+    openbank: ["openbank.es"],
+    evobanco: ["evobanco.com"],
+    centurylink: ["centurylink.com", "centurylink.net"],
+    frontier: ["frontier.com"],
+    cox: ["cox.com"],
+    rcn: ["rcn.com"],
+    mediacom: ["mediacomcable.com"],
+    windstream: ["windstream.net"],
+    fb: ["fb.com", "fbcdn.net"],
   };
 
   // Does a normalized host label (hyphens stripped) contain the brand?
@@ -173,7 +186,7 @@
     "racing", "win", "bid", "date", "review", "party", "gdn", "men",
     "work", "zip", "mov", "cfd", "info", "help", "live", "site", "online",
     "store", "shop", "app", "sbs", "mom", "lol", "pics", "skin", "deals",
-    "agency", "bar", "quest", "cc",
+    "agency", "bar", "quest", "cc", "cyou", "link", "casa",
   ]);
 
   const SHORTENERS = new Set([
@@ -274,7 +287,10 @@
     "facture", "impot", "remboursement", "expir", "oferta",
     "oferte", "verific", "atendimento", "acesso", "empresa",
     "payee", "transfer", "cancel", "sms", "gift", "limitedtime", "myaccount",
-    "signatur", "dokumen", "invoice", "refund", "payout"];
+    "signatur", "dokumen", "invoice", "refund", "payout",
+    "registro", "cita", "formulario", "cliente", "cuenta", "seguridad",
+    "verificar", "pedido", "envio", "rastreo", "premio", "commande",
+    "retract", "activacion", "suscripcion", "servicio"];
 
   // Free hosting / PaaS domains heavily abused by phishing kits.
   const FREE_HOSTS = ["github.io", "blogspot.com", "weebly.com", "amplifyapp.com",
@@ -291,7 +307,13 @@
     "googleapis.com", "appspot.com", "cloudfront.net", "amazonaws.com",
     "azurewebsites.net", "windows.net", "r2.dev", "fleek.co",
     "cloudflare-ipfs.com", "ipfs.io", "dweb.link", "w3s.link", "arweave.net",
-    "plesk.page", "4everland.io", "spheron.app", "surge.sh", "edgecompute.app"];
+    "plesk.page", "4everland.io", "spheron.app", "surge.sh", "edgecompute.app",
+    "replit.dev", "linodeobjects.com", "digitaloceanspaces.com", "backblazeb2.com",
+    "wasabisys.com", "vultrcloud.com", "crazydomains.com", "pages.net.br",
+    "strikingly.com", "ucraft.com", "site123.com", "web.com", "homestead.com",
+    "webs.com", "yolasite.com", "bravenet.com", "freehostia.com", "byethost.com",
+    "eu.org", "pp.ua", "ddns.net", "duckdns.org", "no-ip.com", "no-ip.org",
+    "servehttp.com", "serveftp.com", "servegame.com", "hopto.org", "zapto.org"];
 
   // Best-effort registrable domain (SLD + public suffix, no PSL dependency).
   function registrable(host) {
@@ -362,7 +384,8 @@
     const subCount = host.split(".").length - reg.split(".").length;
     // subdomain labels + free-host detection (used by several checks below)
     const subs = host.slice(0, host.length - reg.length - 1).split(".").filter(Boolean);
-    const freeHost = FREE_HOSTS.find((f) => host === f || host.endsWith("." + f));
+    const freeHost = FREE_HOSTS.find((f) => host === f || host.endsWith("." + f)) ||
+      (/^blogspot\.[a-z]{2,}(\.[a-z]{2})?$/.test(reg) ? reg : null);
     // labels eligible for brand matching: on free hosts the SLD is the platform,
     // not an impersonation target (myname.github.io must not flag 'github').
     const brandLabels = (freeHost ? [] : [sld]).concat(subs).map((l) => l.replace(/-/g, ""));
@@ -559,6 +582,25 @@
     if (subs.some((l) => /^(\d{1,3}[-.]){3}\d{1,3}$/.test(l))) {
       signals.push(signal("ip-in-sub", 25, "med", "IP address hidden inside hostname",
         "Encoding the server IP in the domain is a botnet/phishing-kit tell."));
+    }
+
+    // Hex/UUID-style label (d131b80a-9b6a-....replit.dev)
+    if (subs.some((l) => /^[0-9a-f]{8,}(-[0-9a-f]{4,})*$/.test(l) && l.length >= 8)) {
+      signals.push(signal("hex-sub", 15, "med", "Hex/UUID-style subdomain label",
+        "Machine-generated identifiers in hostnames mark throwaway infrastructure."));
+    }
+
+    // Mixed letters+digits SLD (zey6c6.info, yenib6.top)
+    if (/[a-z]/.test(sld) && /\d/.test(sld) && (sld.match(/\d/g) || []).length >= 2 &&
+        sld.length >= 6 && !IP_HOST.test(host) && !freeHost) {
+      signals.push(signal("mixed-sld", 12, "low", `Letters+digits mixed domain "${sld}"`,
+        "Alphanumeric salad domains are typical of domain-generation algorithms."));
+    }
+
+    // Long opaque blob in path (base64 payloads: /asdf/anzhenf1zx...=)
+    if (/\/[A-Za-z0-9+_=-]{24,}/.test(path) || /=[A-Za-z0-9+_=-]{24,}/.test(path)) {
+      signals.push(signal("blob-path", 18, "med", "Opaque encoded blob in URL path",
+        "Base64-looking payloads in links smuggle data past URL inspection."));
     }
 
     // Credential bait on a free host
