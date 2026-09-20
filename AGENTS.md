@@ -13,11 +13,22 @@ Build **PhishLens**, a client-side phishing-protection toolkit, for the
 
 ## Submission checklist (Devpost)
 
-- [ ] Working prototype + link judges can test (live web demo + load-unpacked ext)
-- [ ] Project name, description, technologies used
-- [ ] Demo link: GitHub repo + GitHub Pages live demo
-- [ ] Video <5min (optional stretch goal; live demo accepted per user decision)
-- [ ] AI disclosure: built with Devin (AI pair programmer) — disclose it
+- [x] Working prototype + link judges can test (live web demo + load-unpacked ext)
+- [x] Project name, description, technologies used (README.md = paste-ready)
+- [x] Demo link: https://georgefifth.github.io/phishlens/ + https://github.com/Georgefifth/phishlens
+- [ ] Video <5min (skipped — user opted for live demo)
+- [x] AI disclosure: built with Devin (AI pair programmer) — disclosed
+- [x] Cover + slides: Figma file https://www.figma.com/design/5uARhJgnKzq2BnITnskraX
+      exported to assets/*.png (cover 1600×900, slides 1920×1080)
+- [ ] Devpost form submission — user does it (their account)
+
+## Figma MCP
+
+Official remote server configured via `devin mcp add figma https://mcp.figma.com/mcp`
+(OAuth done, tokens persisted). Write via `use_figma` (Plugin API JS, top-level
+await + return, colors 0–1, load fonts before text, no `V`/`H` path shorthand,
+return node IDs). planKey: `team::1681314748823569201`. `figma-bridge/` is a
+local polling fallback if MCP ever breaks.
 
 ## Architecture
 
