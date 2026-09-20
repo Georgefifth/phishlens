@@ -101,15 +101,17 @@ no third-party APIs, no external datasets.
 
 ## Validation against real phishing URLs
 
-Tested against the [OpenPhish](https://openphish.com) live feed (300 verified
-phishing URLs) plus a 32-domain legitimate control set (including free-host
-domains, dictionary plurals, and short-brand lookalikes):
+Tested against a mixed real-world feed — [OpenPhish](https://openphish.com),
+[PhishTank](https://phishtank.com), [URLhaus](https://urlhaus.abuse.ch), and
+Phishing.Database (4,800 verified phishing URLs) — plus a 58-domain legitimate
+control set (free hosts, dictionary plurals, short-brand lookalikes, cloud
+storage URLs, and apex domains):
 
 | | count |
 |---|---|
-| flagged suspicious/dangerous (score ≥ 40) | **79 / 300 = 26.3%** |
-| flagged dangerous (score ≥ 70) | 33 |
-| false positives on legit control | **0 / 32** |
+| flagged suspicious/dangerous (score ≥ 40) | **~39% overall** (90% on URLhaus malware URLs) |
+| flagged dangerous (score ≥ 70) | ~16% |
+| false positives on legit control | **0 / 58** |
 
 Honest takeaway: URL-only heuristics have a ceiling — most real phishing hides
 on legitimate hosting (github.io, blogspot, amplifyapp) behind clean-looking
