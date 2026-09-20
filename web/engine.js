@@ -42,7 +42,39 @@
     zoom: ["zoom.us"],
     ebay: ["ebay.com"],
     spotify: ["spotify.com"],
+    ledger: ["ledger.com"],
+    trezor: ["trezor.io"],
+    metamask: ["metamask.io"],
+    trustwallet: ["trustwallet.com"],
+    kraken: ["kraken.com"],
+    blockchain: ["blockchain.com"],
+    revolut: ["revolut.com"],
+    wise: ["wise.com"],
+    citibank: ["citibank.com", "citi.com"],
+    capitalone: ["capitalone.com"],
+    americanexpress: ["americanexpress.com", "aexp.com"],
+    venmo: ["venmo.com"],
+    cashapp: ["cash.app"],
+    telegram: ["telegram.org", "t.me"],
+    snapchat: ["snapchat.com"],
+    protonmail: ["protonmail.com", "proton.me"],
+    openai: ["openai.com", "chatgpt.com"],
+    github: ["github.com"],
+    etsy: ["etsy.com"],
   };
+
+  // Does a normalized host label (hyphens stripped) contain the brand?
+  // Short brands need prefix match ('otherwise'→wise, 'first'→irs are FPs).
+  function labelHasBrand(norm, b) {
+    if (norm === b) return true;
+    if (norm === b + "s") return false; // dictionary plural (apples.com)
+    if (b.length <= 4) {
+      if (norm.startsWith(b)) return true;
+      // brand at end only when the lead is credential bait: loginwise ✓, otherwise ✗
+      return norm.endsWith(b) && PATH_KEYWORDS.includes(norm.slice(0, -b.length));
+    }
+    return norm.length >= b.length + 2 && norm.includes(b);
+  }
 
   // Free/disposable and frequently-abused TLDs (Freenom + low-cost stats).
   const SUS_TLDS = new Set([
@@ -139,6 +171,15 @@
 
   const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
 
+  // Free hosting / PaaS domains heavily abused by phishing kits.
+  const FREE_HOSTS = ["github.io", "blogspot.com", "weebly.com", "amplifyapp.com",
+    "workers.dev", "pages.dev", "web.app", "firebaseapp.com", "netlify.app",
+    "vercel.app", "herokuapp.com", "wordpress.com", "wixsite.com", "glitch.me",
+    "replit.app", "repl.co", "surge.sh", "fly.dev", "onrender.com", "trycloudflare.com",
+    "ngrok.io", "ngrok-free.app", "000webhostapp.com", "sites.google.com",
+    "godaddysites.com", "tripod.com", "angelfire.com", "blogspot.ae", "blogspot.in",
+    "blogspot.co.uk", "blogspot.de", "blogspot.fr", "blogspot.com.br"];
+
   // Best-effort registrable domain (SLD + public suffix, no PSL dependency).
   function registrable(host) {
     const parts = host.split(".");
@@ -206,6 +247,12 @@
     const tld = tldOf(host);
     const reg = registrable(host);
     const subCount = host.split(".").length - reg.split(".").length;
+    // subdomain labels + free-host detection (used by several checks below)
+    const subs = host.slice(0, host.length - reg.length - 1).split(".").filter(Boolean);
+    const freeHost = FREE_HOSTS.find((f) => host === f || host.endsWith("." + f));
+    // labels eligible for brand matching: on free hosts the SLD is the platform,
+    // not an impersonation target (myname.github.io must not flag 'github').
+    const brandLabels = (freeHost ? [] : [sld]).concat(subs).map((l) => l.replace(/-/g, ""));
 
     // Transport & scheme
     if (url.protocol === "http:") {
@@ -266,8 +313,10 @@
     if (!isBrandDomain(host)) {
       const deob = deobfuscate(sld);
       for (const [brand] of Object.entries(BRANDS)) {
+        if (deob === brand + "s") continue; // dictionary plural (apples.com)
         const dist = levenshtein(deob, brand);
-        if (deob !== brand && dist <= 2 && dist > 0) {
+        // short brands: dist 2 is too noisy ('etsy'→'ebay' is a legit site)
+        if (deob !== brand && dist > 0 && dist <= (brand.length <= 4 ? 1 : 2)) {
           signals.push(signal("typosquat", 45, "high",
             `Lookalike of "${brand}" (edit distance ${dist})`,
             `'${host}' differs subtly from the real ${BRANDS[brand][0]} — a typosquat.`));
@@ -283,7 +332,7 @@
       // brand name embedded in hostname while real domain is something else
       for (const [brand, domains] of Object.entries(BRANDS)) {
         const owned = domains.some((d) => host === d || host.endsWith("." + d));
-        if (!owned && host.includes(brand)) {
+        if (!owned && brandLabels.some((l) => labelHasBrand(l, brand))) {
           signals.push(signal("brand-in-host", 35, "high",
             `"${brand}" appears in hostname but domain is '${reg}'`,
             "Attackers prepend brand names as subdomains to look legitimate."));
@@ -319,6 +368,42 @@
     if (url.port && !["80", "443"].includes(url.port)) {
       signals.push(signal("odd-port", 15, "med", `Non-standard port :${url.port}`,
         "Legitimate login pages almost never live on alternate ports."));
+    }
+
+    // Brand name hidden inside a subdomain label (ledger-x.blogspot.com, paypal.secure.foo.com)
+    if (!isBrandDomain(host)) {
+      outer: for (const lbl of subs) {
+        const norm = lbl.toLowerCase().replace(/-/g, "");
+        if (norm.length < 4) continue;
+        for (const b of Object.keys(BRANDS)) {
+          if (norm === b + "s") continue; // dictionary plural
+          if (labelHasBrand(norm, b) ||
+              (norm.length >= b.length - 1 && norm.length <= b.length + 4 &&
+               levenshtein(deobfuscate(norm), b) <= 1)) {
+            signals.push(signal("brand-sub", 35, "high",
+              `Brand "${b}" hidden in subdomain "${lbl}"`,
+              "Phishing kits park lookalike brands in subdomains on unrelated or free-host domains."));
+            break outer;
+          }
+        }
+      }
+    }
+
+    // High-entropy subdomain label (main.d3thcdi1mb7dsr.amplifyapp.com)
+    const rnd = subs.find((s) => s.length >= 12 && shannon(s) > 3.8);
+    if (rnd) {
+      signals.push(signal("rand-sub", 15, "med", `Random-looking subdomain "${rnd.slice(0, 18)}…"`,
+        "Auto-generated hostnames are typical of disposable phishing infrastructure."));
+    }
+
+    // Credential bait on a free host
+    const brandInPath = Object.keys(BRANDS).find((b) => path.includes(b));
+    if (freeHost && (kwHits.length || brandInPath)) {
+      signals.push(signal("freehost-bait", brandInPath ? 40 : 30, "med",
+        brandInPath
+          ? `Brand "${brandInPath}" in path on free host "${freeHost}"`
+          : `Credential bait on free host "${freeHost}"`,
+        "Phishing overwhelmingly lives on free hosting — disposable, zero cost, looks like a real site."));
     }
 
     // Random-looking domain

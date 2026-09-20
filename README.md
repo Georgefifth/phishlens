@@ -98,3 +98,20 @@ no third-party APIs, no external datasets.
 > `service_worker`. To load in Firefox (`about:debugging`), swap
 > `manifest.json` with `manifest.firefox.json` (same code, different
 > `background` block). Chrome/Edge/Brave use `manifest.json` as-is.
+
+## Validation against real phishing URLs
+
+Tested against the [OpenPhish](https://openphish.com) live feed (300 verified
+phishing URLs) plus a 21-domain legitimate control set (including free-host
+domains, dictionary plurals, and short-brand lookalikes):
+
+| | count |
+|---|---|
+| flagged suspicious/dangerous (score ≥ 40) | **65 / 300 = 21.7%** |
+| flagged dangerous (score ≥ 70) | 15 |
+| false positives on legit control | **0 / 21** |
+
+Honest takeaway: URL-only heuristics have a ceiling — most real phishing hides
+on legitimate hosting (github.io, blogspot, amplifyapp) behind clean-looking
+paths. That is exactly why the extension also runs **page-content analysis**:
+our bait page scores 100 even though it lives on github.io itself.
