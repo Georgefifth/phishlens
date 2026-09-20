@@ -383,7 +383,8 @@
     const reg = registrable(host);
     const subCount = host.split(".").length - reg.split(".").length;
     // subdomain labels + free-host detection (used by several checks below)
-    const subs = host.slice(0, host.length - reg.length - 1).split(".").filter(Boolean);
+    const subs = host === reg ? [] :
+      host.slice(0, host.length - reg.length - 1).split(".").filter(Boolean);
     const freeHost = FREE_HOSTS.find((f) => host === f || host.endsWith("." + f)) ||
       (/^blogspot\.[a-z]{2,}(\.[a-z]{2})?$/.test(reg) ? reg : null);
     // labels eligible for brand matching: on free hosts the SLD is the platform,
@@ -552,7 +553,7 @@
     }
 
     // Vowel-less label — generated gibberish (jfvlqz.top, wvltnsd.x)
-    const noVowel = (freeHost ? subs : [sld, ...subs]).find(
+    const noVowel = isBrandDomain(host) ? null : (freeHost ? subs : [sld, ...subs]).find(
       (l) => l.length >= 5 && /^[b-df-hj-np-tv-z0-9-]+$/.test(l) && !IP_HOST.test(l));
     if (noVowel) {
       signals.push(signal("vowelless", 15, "med", `Consonant-only label "${noVowel.slice(0, 16)}"`,
@@ -560,7 +561,8 @@
     }
 
     // Digit-stuffed label (hub4571132.pro, qwo231sdx.club)
-    const digLabel = subs.find((l) => (l.match(/\d/g) || []).length >= 3 && l.length >= 7);
+    const digLabel = isBrandDomain(host) ? null :
+      subs.find((l) => (l.match(/\d/g) || []).length >= 3 && l.length >= 7);
     if (digLabel) {
       signals.push(signal("diglabel", 15, "med", `Digit-stuffed label "${digLabel.slice(0, 16)}"`,
         "Numbers smuggled into hostnames are disposable-infra markers."));
@@ -569,7 +571,7 @@
     // Fake TLD labels parked as subdomains (rauketnen.co.jp.evil.top)
     const FAKE_TLD = new Set(["co", "com", "net", "org", "or", "edu", "gov",
       "jp", "uk", "kr", "cn", "de", "fr", "au", "us", "br", "in"]);
-    if (!freeHost) {
+    if (!freeHost && !isBrandDomain(host)) {
       const fake = subs.filter((l) => FAKE_TLD.has(l));
       if (fake.length >= 2 || (fake.length && subs.length >= 2)) {
         signals.push(signal("fake-tld", 18, "med",
@@ -592,7 +594,7 @@
 
     // Mixed letters+digits SLD (zey6c6.info, yenib6.top)
     if (/[a-z]/.test(sld) && /\d/.test(sld) && (sld.match(/\d/g) || []).length >= 2 &&
-        sld.length >= 6 && !IP_HOST.test(host) && !freeHost) {
+        sld.length >= 6 && !IP_HOST.test(host) && !freeHost && !isBrandDomain(host)) {
       signals.push(signal("mixed-sld", 12, "low", `Letters+digits mixed domain "${sld}"`,
         "Alphanumeric salad domains are typical of domain-generation algorithms."));
     }
