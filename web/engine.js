@@ -78,6 +78,53 @@
     target: ["target.com"],
     homedepot: ["homedepot.com"],
     lowes: ["lowes.com"],
+    allegro: ["allegro.pl", "allegro.com"],
+    amex: ["americanexpress.com", "aexp.com", "amex.com"],
+    icloud: ["icloud.com"],
+    visa: ["visa.com"],
+    mastercard: ["mastercard.com"],
+    bradesco: ["bradesco.com.br"],
+    itau: ["itau.com.br"],
+    santander: ["santander.com", "santander.com.br", "santander.co.uk"],
+    natwest: ["natwest.com"],
+    deutsche: ["deutsche-bank.de", "db.com"],
+    commerzbank: ["commerzbank.de"],
+    smbc: ["smbc.co.jp"],
+    mufg: ["mufg.jp"],
+    mizuho: ["mizuho.co.jp"],
+    jcb: ["jcb.co.jp"],
+    docusign: ["docusign.com"],
+    bt: ["bt.com"],
+    optus: ["optus.com.au"],
+    vodafone: ["vodafone.com"],
+    orange: ["orange.fr", "orange.com"],
+    sfr: ["sfr.fr"],
+    bouygues: ["bouyguestelecom.fr"],
+    laposte: ["laposte.fr", "laposte.net"],
+    cdiscount: ["cdiscount.com"],
+    fnac: ["fnac.com"],
+    carrefour: ["carrefour.fr", "carrefour.com"],
+    auchan: ["auchan.fr"],
+    bnp: ["bnpparibas.com", "bnpparibas.net"],
+    creditagricole: ["credit-agricole.fr", "ca-cb.com"],
+    societegenerale: ["societegenerale.fr", "socgen.com"],
+    labanquepostale: ["labanquepostale.fr"],
+    ameli: ["ameli.fr", "assurance-maladie.fr"],
+    impots: ["impots.gouv.fr"],
+    sncf: ["sncf.com", "sncf-connect.com"],
+    chronopost: ["chronopost.fr"],
+    colissimo: ["colissimo.fr"],
+    mondialrelay: ["mondialrelay.fr"],
+    rakuten: ["rakuten.com", "rakuten.co.jp"],
+    ups: ["ups.com"],
+    dpd: ["dpd.com", "dpdgroup.com"],
+    gls: ["gls-group.com"],
+    hermes: ["hermesworld.com", "evri.com"],
+    correos: ["correos.es"],
+    anpost: ["anpost.com"],
+    posteitaliane: ["poste.it"],
+    intesasanpaolo: ["intesasanpaolo.com"],
+    unicredit: ["unicredit.it"],
   };
 
   // Does a normalized host label (hyphens stripped) contain the brand?
@@ -93,7 +140,11 @@
     if (norm.length >= b.length + 2 && norm.includes(b)) return true;
     // leetspeak folded inside a label: m1cr0soft-login, paypa1x
     const dn = deobfuscate(norm);
-    return dn !== norm && dn.length >= b.length + 2 && dn.includes(b);
+    if (dn !== norm && dn.length >= b.length + 2 && dn.includes(b)) return true;
+    // doubled-letter scrambling: meetamassklogaiin → metamasklogin
+    const sq = (s) => s.replace(/(.)\1+/g, "$1");
+    const sb = sq(b);
+    return sq(norm).length >= sb.length + 2 && sq(norm).includes(sb);
   }
 
   // Free/disposable and frequently-abused TLDs (Freenom + low-cost stats).
@@ -102,7 +153,8 @@
     "monster", "icu", "click", "country", "stream", "download", "loan",
     "racing", "win", "bid", "date", "review", "party", "gdn", "men",
     "work", "zip", "mov", "cfd", "info", "help", "live", "site", "online",
-    "store", "shop", "app",
+    "store", "shop", "app", "sbs", "mom", "lol", "pics", "skin", "deals",
+    "agency", "bar", "quest", "cc",
   ]);
 
   const SHORTENERS = new Set([
@@ -110,6 +162,7 @@
     "rebrand.ly", "cutt.ly", "shorturl.at", "tiny.cc", "rb.gy", "t.ly",
     "s.id", "bit.do", "soo.gd", "clck.ru", "v.gd",
     "goo.su", "qrco.de", "s4w.in", "g5.lu", "hotm.io", "ln.run", "short.io",
+    "gt.tc", "fr.gd", "ur.ly", "zi.ht",
   ]);
 
   // Credential-theft vocabulary in URL paths.
@@ -196,7 +249,10 @@
   // Bait words that are suspicious inside a hostname (not just the path).
   const DOMAIN_BAIT = ["login", "signin", "signon", "verify", "account",
     "secure", "support", "billing", "confirm", "auth", "wallet", "webscr",
-    "password", "credential", "update", "recovery", "unlock", "suspend"];
+    "password", "credential", "update", "recovery", "unlock", "suspend",
+    "secur", "client", "compte", "banque", "colis", "livraison", "suivi",
+    "facture", "impot", "remboursement", "expir", "oferta",
+    "oferte", "verific", "atendimento", "acesso", "empresa"];
 
   // Free hosting / PaaS domains heavily abused by phishing kits.
   const FREE_HOSTS = ["github.io", "blogspot.com", "weebly.com", "amplifyapp.com",
@@ -347,11 +403,12 @@
     if (!isBrandDomain(host)) {
       const deob = deobfuscate(sld);
       for (const [brand] of Object.entries(BRANDS)) {
+        if (brand.length <= 3) continue; // 2-3 char brands are FP machines (bit→bt)
         if (deob === brand + "s") continue; // dictionary plural (apples.com)
         if (deob.length < brand.length && brand.includes(deob)) continue; // fragment, not squat (bit.ly⊂bybit)
         const dist = levenshtein(deob, brand);
-        // short brands: dist 2 is too noisy ('etsy'→'ebay' is a legit site)
-        if (deob !== brand && dist > 0 && dist <= (brand.length <= 4 ? 1 : 2)) {
+        // dist 2 only pays off on long brands ('cafe'→'chase', 'etsy'→'ebay' are legit)
+        if (deob !== brand && dist > 0 && dist <= (brand.length <= 6 ? 1 : 2)) {
           signals.push(signal("typosquat", 45, "high",
             `Lookalike of "${brand}" (edit distance ${dist})`,
             `'${host}' differs subtly from the real ${BRANDS[brand][0]} — a typosquat.`));
@@ -380,7 +437,9 @@
     // exempt gov/edu/mil — 'login.gov' is institutional naming, not bait
     const INSTITUTIONAL = ["gov", "edu", "mil", "govt", "ac"];
     if (!isBrandDomain(host) && !INSTITUTIONAL.includes(tld)) {
-      const hostBait = brandLabels.filter((l) => DOMAIN_BAIT.some((k) => l.includes(k)));
+      const hostBait = brandLabels.filter((l) => DOMAIN_BAIT.some((k) =>
+        l.includes(k) && !(l.startsWith(k) && l.length <= k.length + 3) &&
+        !(k === "banque" && l.startsWith("banquet"))));
       if (hostBait.length) {
         signals.push(signal("domain-bait", Math.min(24, 8 + hostBait.length * 8), "med",
           `Credential-bait words in domain (${hostBait.slice(0, 3).join(", ")})`,
@@ -445,6 +504,12 @@
 
     // Credential bait on a free host
     const brandInPath = Object.keys(BRANDS).find((b) => path.includes(b));
+    // brand name in the path on a domain that doesn't own it (fingersh.com/amex_...)
+    if (!isBrandDomain(host) && brandInPath && !freeHost) {
+      signals.push(signal("brand-path", 20, "med",
+        `Brand "${brandInPath}" in path on unrelated domain '${reg}'`,
+        "Real brands don't park their login pages on strangers' domains."));
+    }
     if (freeHost && (kwHits.length || brandInPath)) {
       signals.push(signal("freehost-bait", brandInPath ? 40 : 30, "med",
         brandInPath
