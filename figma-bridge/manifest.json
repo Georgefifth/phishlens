@@ -1,0 +1,14 @@
+{
+  "name": "PhishLens Bridge",
+  "id": "phishlens-bridge-2026",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma", "figjam"],
+  "documentAccess": "dynamic-page",
+  "networkAccess": {
+    "allowedDomains": ["http://localhost:3055"],
+    "devAllowedDomains": ["http://localhost:3055"],
+    "reasoning": "Polls a local command bridge so Devin can draw on the canvas."
+  }
+}
