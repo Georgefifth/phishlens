@@ -52,6 +52,9 @@ dangerous`, always with the reasons attached.
 bait pages (a fake "PayPal suspended" page and a control bank page) you can open
 with the extension installed to watch the warning fire.
 
+📹 **Demo video:** [`assets/demo-video.mp4`](assets/demo-video.mp4) (33s)
+📊 **Slides:** [`assets/slides.pdf`](assets/slides.pdf) · cover + gallery PNGs in [`assets/`](assets/)
+
 ## Install the extension (2 min)
 
 ```bash
