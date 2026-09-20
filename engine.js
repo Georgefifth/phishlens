@@ -134,6 +134,11 @@
     return out;
   }
 
+  const EXEC_EXTS = [".exe", ".msi", ".apk", ".scr", ".bat", ".cmd", ".ps1",
+    ".jar", ".vbs", ".js", ".iso", ".dmg", ".pkg", ".hta"];
+
+  const EMAIL_RE = /[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i;
+
   // Best-effort registrable domain (SLD + public suffix, no PSL dependency).
   function registrable(host) {
     const parts = host.split(".");
@@ -177,9 +182,22 @@
       return { ok: false, error: "empty input", score: 0, level: "unknown", signals };
     }
     try {
-      url = new URL(input.includes("://") ? input : "http://" + input);
+      // has explicit scheme (incl. non-HTTP like data:/javascript:) → parse as-is
+      url = new URL(/^[a-z][a-z0-9+.-]*:/i.test(input) ? input : "http://" + input);
     } catch (e) {
       return { ok: false, error: "unparseable URL", score: 0, level: "unknown", signals, input };
+    }
+
+    // Non-HTTP(S) schemes are checked before host parsing.
+    if (url.protocol === "data:") {
+      signals.push(signal("data-uri", 55, "high", "data: URI link",
+        "data: URLs smuggle a whole payload inside the link itself — a known phishing channel that bypasses domain checks."));
+      return finalize(signals, input, url);
+    }
+    if (["javascript:", "vbscript:", "file:", "about:", "blob:"].includes(url.protocol)) {
+      signals.push(signal("danger-scheme", 55, "high", `Dangerous scheme "${url.protocol}"`,
+        "This link executes content directly — never part of a legitimate login flow."));
+      return finalize(signals, input, url);
     }
 
     const host = url.hostname.toLowerCase();
@@ -280,6 +298,27 @@
       signals.push(signal("path-kw", Math.min(20, 6 + kwHits.length * 4), "med",
         `Credential-bait keywords in path (${kwHits.slice(0, 4).join(", ")})`,
         "Login/verify/billing lures on an unrelated domain are a phishing pattern."));
+    }
+
+    // Executable download in path
+    const execExt = EXEC_EXTS.find((e) => url.pathname.toLowerCase().endsWith(e));
+    if (execExt) {
+      signals.push(signal("exec-download", 40, "high",
+        `Direct download of executable (${execExt})`,
+        "Links that download programs are drive-by malware bait — especially from messages."));
+    }
+
+    // Victim email embedded in URL (pre-filled phishing lures)
+    if (EMAIL_RE.test(path) || EMAIL_RE.test(url.search)) {
+      signals.push(signal("email-in-url", 25, "med",
+        "An email address is embedded in the URL",
+        "Phishers pre-fill lures with your address to make the page look personal."));
+    }
+
+    // Non-standard port
+    if (url.port && !["80", "443"].includes(url.port)) {
+      signals.push(signal("odd-port", 15, "med", `Non-standard port :${url.port}`,
+        "Legitimate login pages almost never live on alternate ports."));
     }
 
     // Random-looking domain

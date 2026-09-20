@@ -90,3 +90,8 @@ no third-party APIs, no external datasets.
 - Optional on-device ML layer (compact URL classifier) on top of the heuristics
 - Community brand/TLD registry updates + user report feedback loop
 - Safari port (WebExtensions make this nearly free)
+
+> **Firefox note:** Firefox's MV3 implementation uses event pages rather than
+> `service_worker`. To load in Firefox (`about:debugging`), swap
+> `manifest.json` with `manifest.firefox.json` (same code, different
+> `background` block). Chrome/Edge/Brave use `manifest.json` as-is.
