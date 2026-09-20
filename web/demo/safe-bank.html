@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Meridian Community Bank — Sign in</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{margin:0;font:15px/1.5 Arial,Helvetica,sans-serif;background:#eef2f7;color:#1e293b}
+  .bar{background:#1e3a8a;color:#fff;padding:14px 0;text-align:center;font-size:20px;font-weight:bold}
+  .card{max-width:400px;margin:48px auto;background:#fff;border-radius:8px;
+    box-shadow:0 2px 10px rgba(0,0,0,.12);padding:28px}
+  input{width:100%;box-sizing:border-box;padding:11px;margin:7px 0;border:1px solid #cbd5e1;border-radius:5px;font-size:14px}
+  button{width:100%;background:#1e3a8a;color:#fff;border:0;padding:12px;border-radius:6px;
+    font-size:15px;font-weight:bold;cursor:pointer;margin-top:8px}
+  .note{font-size:12px;color:#64748b;margin-top:14px;text-align:center}
+</style>
+</head>
+<body>
+<div class="bar">Meridian Community Bank</div>
+<div class="card">
+  <p style="margin-top:0;color:#475569">Sign in to online banking. We'll never ask for your
+  card PIN, full SSN, or one-time codes on this page.</p>
+  <!-- well-behaved form: same-origin, HTTPS-relative action -->
+  <form action="/session/new" method="post">
+    <input name="username" type="text" placeholder="Username" autocomplete="username">
+    <input name="password" type="password" placeholder="Password" autocomplete="current-password">
+    <button type="submit">Sign in</button>
+  </form>
+  <div class="note">🔒 Control page for PhishLens demos — should score <b>likely safe</b>.
+  Demo site; no real banking here.</div>
+</div>
+</body>
+</html>

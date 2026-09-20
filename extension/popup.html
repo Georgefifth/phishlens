@@ -1,0 +1,52 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body{width:340px;margin:0;font:13px/1.5 -apple-system,Segoe UI,Roboto,sans-serif;background:#0f172a;color:#e2e8f0}
+  header{padding:12px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid #1e293b}
+  header img{width:26px;height:26px}
+  h1{font-size:15px;margin:0;font-weight:700}
+  .sub{color:#94a3b8;font-size:11px}
+  section{padding:12px 16px}
+  .gauge{display:flex;align-items:center;gap:12px}
+  .ring{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:18px;flex-shrink:0}
+  .lvl{font-weight:700;text-transform:uppercase;font-size:12px;letter-spacing:.5px}
+  .host{color:#94a3b8;font-size:11px;word-break:break-all;margin-top:2px}
+  ul{list-style:none;margin:10px 0 0;padding:0}
+  li{padding:7px 9px;border-left:3px solid #475569;background:#1e293b;border-radius:4px;margin-bottom:6px}
+  li b{display:block;font-size:12px}
+  li span{color:#94a3b8;font-size:11px}
+  li.high{border-color:#dc2626} li.med{border-color:#ea580c} li.low{border-color:#ca8a04} li.good{border-color:#16a34a}
+  textarea{width:100%;box-sizing:border-box;background:#1e293b;border:1px solid #334155;color:#e2e8f0;
+    border-radius:6px;padding:8px;font:12px monospace;resize:vertical}
+  button{margin-top:8px;width:100%;background:#14b8a6;border:0;color:#042f2e;font-weight:700;
+    padding:8px;border-radius:6px;cursor:pointer;font-size:13px}
+  button:hover{background:#2dd4bf}
+  .res{margin-top:10px}
+  .muted{color:#64748b;font-size:11px;text-align:center;padding:0 16px 10px}
+</style>
+</head>
+<body>
+<header>
+  <img src="icons/icon48.png" alt="">
+  <div><h1>PhishLens</h1><div class="sub">local, explainable phishing detection</div></div>
+</header>
+<section>
+  <div class="gauge">
+    <div class="ring" id="ring">–</div>
+    <div><div class="lvl" id="lvl">scanning…</div><div class="host" id="host"></div></div>
+  </div>
+  <ul id="sigs"></ul>
+</section>
+<section>
+  <textarea id="url" rows="2" placeholder="Paste a suspicious link to analyze it locally…"></textarea>
+  <button id="go">Analyze link</button>
+  <div class="res" id="res"></div>
+</section>
+<div class="muted">All analysis runs in your browser. Nothing is uploaded.</div>
+<script src="engine.js"></script>
+<script src="popup.js"></script>
+</body>
+</html>
