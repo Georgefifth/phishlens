@@ -1,0 +1,7 @@
+{
+  "name": "PhishLens Cover Generator",
+  "id": "phishlens-cover-gen-2026",
+  "api": "1.0.0",
+  "main": "code.js",
+  "editorType": ["figma"]
+}
