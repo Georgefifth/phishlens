@@ -49,6 +49,7 @@
   };
 
   let lastResult = null;
+  let lastSavedFingerprint = "";
   let bannerEl = null;
 
   function injectBanner(result) {
@@ -96,6 +97,34 @@
     if (!window.PhishLens) return;
     const snap = snapshot();
     lastResult = window.PhishLens.analyze(location.href, snap);
+    const scanSignals = Array.isArray(lastResult.signals)
+  ? lastResult.signals.slice(0, 8).map((signal) => ({
+      id: signal.id,
+      title: signal.title,
+      detail: signal.detail,
+    }))
+  : [];
+
+const fingerprint = JSON.stringify({
+  url: location.href,
+  score: lastResult.score,
+  level: lastResult.level,
+  signals: scanSignals.map((signal) => signal.id).sort(),
+});
+
+if (fingerprint !== lastSavedFingerprint) {
+  lastSavedFingerprint = fingerprint;
+
+  chrome.runtime.sendMessage({
+    type: "pl-save-scan",
+    scan: {
+      url: location.href,
+      score: lastResult.score,
+      level: lastResult.level,
+      signals: scanSignals,
+    },
+  }).catch(() => {});
+}
     lastResult.pageSignals = lastResult.signals.filter((s) =>
       ["form-http", "form-xdomain", "form-noaction", "cred-lookalike",
        "sensitive-fields", "hidden-iframe", "ext-links", "urgency"].includes(s.id));

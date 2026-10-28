@@ -26,6 +26,27 @@
   button:hover{background:#2dd4bf}
   .res{margin-top:10px}
   .muted{color:#64748b;font-size:11px;text-align:center;padding:0 16px 10px}
+
+    .history-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .history-head h2{font-size:13px;margin:0}
+  .history-actions{display:flex;gap:6px}
+  .history-actions button{width:auto;margin-top:0;padding:6px 9px;font-size:11px}
+  button.secondary{background:#334155;color:#e2e8f0}
+  button.secondary:hover{background:#475569}
+  button.danger{background:#7f1d1d;color:#fee2e2}
+  button.danger:hover{background:#991b1b}
+  #history-list{margin-top:10px}
+    .export-button{
+    width:auto;
+    margin-top:8px;
+    padding:5px 9px;
+    font-size:11px;
+  }
+  .history-item{padding:9px;background:#1e293b;border-radius:6px;margin-bottom:7px}
+  .history-url{font-size:11px;overflow-wrap:anywhere;color:#cbd5e1}
+  .history-meta{display:flex;justify-content:space-between;gap:8px;margin-top:5px;font-size:11px}
+  .history-empty{color:#94a3b8;text-align:center;padding:12px 0;font-size:11px}
+
 </style>
 </head>
 <body>
@@ -45,6 +66,20 @@
   <button id="go">Analyze link</button>
   <div class="res" id="res"></div>
 </section>
+
+<section>
+  <div class="history-head">
+    <h2>Scan History</h2>
+    <div class="history-actions">
+      <button id="refresh-history" class="secondary">Refresh</button>
+      <button id="clear-history" class="danger">Clear</button>
+    </div>
+  </div>
+  <div id="history-list">
+    <div class="history-empty">Loading scan history…</div>
+  </div>
+</section>
+
 <div class="muted">All analysis runs in your browser. Nothing is uploaded.</div>
 <script src="engine.js"></script>
 <script src="popup.js"></script>
